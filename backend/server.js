@@ -5,7 +5,9 @@ require("dotenv").config();
 
 const db = require("./config/db");
 const initDatabase = require("./config/init-db");
+
 const authRoutes = require("./routes/auth");
+const academyRoutes = require("./routes/academy");
 
 const app = express();
 
@@ -18,8 +20,9 @@ app.use(cors({
 
 app.use(express.json());
 
-// Authentication API
+// API Routes
 app.use("/api/auth", authRoutes);
+app.use("/api", academyRoutes);
 
 // Home Route
 app.get("/", (req, res) => {
