@@ -1,8 +1,10 @@
+
 const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
 
 const db = require("./config/db");
+const initDatabase = require("./config/init-db");
 
 const app = express();
 
@@ -19,7 +21,7 @@ app.get("/api/db-check", async (req, res) => {
 
         res.json({
             success: true,
-            message: "MySQL Database Connected Successfully!",
+            message: "MySQL Connected Successfully!",
             database: rows
         });
     } catch (error) {
@@ -33,6 +35,17 @@ app.get("/api/db-check", async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on port ${PORT}`);
-});
+async function startServer() {
+    try {
+        await initDatabase();
+
+        app.listen(PORT, "0.0.0.0", () => {
+            console.log("Academy Backend Running on " + PORT);
+        });
+    } catch (error) {
+        console.error("Database initialization failed:", error);
+        process.exit(1);
+    }
+}
+
+startServer();
