@@ -8,7 +8,7 @@ const initDatabase = require("./config/init-db");
 
 const authRoutes = require("./routes/auth");
 const academyRoutes = require("./routes/academy");
-
+const setupRoutes = require("./routes/setup");
 const app = express();
 
 // Middleware
@@ -22,8 +22,12 @@ app.use(express.json());
 
 // API Routes
 app.use("/api/auth", authRoutes);
-app.use("/api", academyRoutes);
 
+// Trainer setup route FIRST
+app.use("/api/setup", setupRoutes);
+
+// Protected academy routes AFTER setup
+app.use("/api", academyRoutes);
 // Home Route
 app.get("/", (req, res) => {
     res.send("Maihar Physical Academy Backend Running!");
