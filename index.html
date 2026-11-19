@@ -1,0 +1,265 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Maihar Physical Academy</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- LOGIN -->
+<section id="loginPage" class="login-page">
+  <div class="login-card">
+    <div class="logo">MPA</div>
+    <h2>Maihar Physical Academy</h2>
+    <p>Student Management Portal</p>
+
+    <form id="loginForm">
+      <label>Username</label>
+      <input id="username" placeholder="Enter username" required>
+
+      <label>Password</label>
+      <input id="password" type="password" placeholder="Enter password" required>
+
+      <button type="submit">Login</button>
+      <p id="loginError"></p>
+    </form>
+  </div>
+</section>
+
+<!-- APPLICATION -->
+<div id="app" class="app hidden">
+
+  <aside class="sidebar">
+    <div class="academy-logo">
+      <div class="logo">MPA</div>
+      <h3>Maihar Physical Academy</h3>
+    </div>
+
+    <nav>
+      <button class="nav-link active" data-page="dashboard">Dashboard</button>
+      <button class="nav-link trainer-only" data-page="students">Students</button>
+      <button class="nav-link" data-page="attendance">Attendance</button>
+      <button class="nav-link" data-page="fees">Fees Details</button>
+      <button class="nav-link" data-page="notifications">Notifications</button>
+      <button class="nav-link" data-page="multimedia">Multimedia</button>
+      <button class="nav-link" data-page="contact">Contact</button>
+    </nav>
+
+    <button id="logoutBtn" class="logout-btn">Logout</button>
+  </aside>
+
+  <main class="main-content">
+    <header class="topbar">
+      <h2 id="pageTitle">Dashboard</h2>
+      <div class="user-profile">
+        <div class="profile-avatar" id="profileAvatar" aria-hidden="true">
+          <span id="profileInitials">T</span>
+          <img id="profilePhoto" alt="" hidden>
+        </div>
+        <div class="profile-details">
+          <span id="profileName">Trainer</span>
+          <span id="profileRole">Admin</span>
+        </div>
+        <button id="editProfileBtn" class="profile-edit-btn trainer-only" type="button">Edit profile</button>
+      </div>
+    </header>
+
+    <div class="content">
+
+      <section id="dashboardPage" class="page active-page">
+        <div class="welcome">
+          <p>WELCOME TO</p>
+          <h1>Maihar Physical Academy</h1>
+          <span>Student Management Portal</span>
+        </div>
+
+        <div class="dashboard-cards">
+          <div class="card trainer-only">
+            <h3>Total Students</h3>
+            <h1 id="totalStudents">0</h1>
+          </div>
+          <div class="card">
+            <h3>Attendance</h3>
+            <h1 id="dashboardAttendance">—</h1>
+          </div>
+          <div class="card">
+            <h3>Fees Pending</h3>
+            <h1 id="dashboardPending">₹0</h1>
+          </div>
+          <div class="card">
+            <h3>Notifications</h3>
+            <h1 id="totalNotices">0</h1>
+          </div>
+        </div>
+
+        <h3>Latest Notifications</h3>
+        <div id="dashboardNotices"></div>
+      </section>
+
+      <section id="studentsPage" class="page">
+        <div class="section-title">
+          <h2>Student Management</h2>
+          <button id="addStudentBtn">+ Add Student</button>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr><th>Name</th><th>Username</th><th>Contact</th><th>Total Fees</th><th>Paid Fees</th><th>Action</th></tr>
+            </thead>
+            <tbody id="studentsTable"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="attendancePage" class="page">
+        <div class="section-title">
+          <h2>Attendance Management</h2>
+          <label class="attendance-date-label">Selected Date
+            <input type="date" id="attendanceDate">
+          </label>
+        </div>
+        <div class="attendance-calendar-card">
+          <div class="attendance-calendar-heading">
+            <h3 id="attendanceMonth"></h3>
+            <div class="attendance-legend" aria-label="Attendance key">
+              <span><i class="legend-dot present"></i>Present</span>
+              <span><i class="legend-dot absent"></i>Absent</span>
+              <span><i class="legend-dot unmarked"></i>No record</span>
+            </div>
+          </div>
+          <div id="attendanceCalendar" class="attendance-calendar" aria-label="Attendance calendar"></div>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead><tr><th>Student Name</th><th>Username</th><th>Attendance</th></tr></thead>
+            <tbody id="attendanceTable"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="feesPage" class="page">
+        <h2>Student Fees Details</h2>
+        <div class="table-container">
+          <table>
+            <thead><tr><th>Student Name</th><th>Total Fees</th><th>Paid Fees</th><th>Remaining Fees</th><th>Update</th></tr></thead>
+            <tbody id="feesTable"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="notificationsPage" class="page">
+        <div class="section-title">
+          <h2>Academy Notifications</h2>
+          <button id="addNoticeBtn" class="trainer-only">+ Upload Notice</button>
+        </div>
+        <div id="allNotices"></div>
+      </section>
+
+      <section id="multimediaPage" class="page">
+        <h2>Connect With Us</h2>
+        <div class="social-links">
+          <a href="https://www.whatsapp.com/" target="_blank" rel="noopener">
+            <svg class="social-icon whatsapp-icon" viewBox="0 0 48 48" aria-hidden="true">
+              <path d="M24 5a18 18 0 0 0-15.5 27.2L6 42l10.1-2.6A18 18 0 1 0 24 5Z" fill="none" stroke="currentColor" stroke-width="3"/>
+              <path d="M17 15c1.2-1.2 3.2-.6 3.8 1.1l1.2 3.1c.4 1.1.1 2.2-.8 2.9l-1.4 1c1.7 3.3 4.1 5.7 7.4 7.4l1-1.4c.7-.9 1.8-1.2 2.9-.8l3.1 1.2c1.7.6 2.3 2.6 1.1 3.8l-1.4 1.4c-1.2 1.2-3 1.7-4.7 1.2-9.2-2.7-16.2-9.7-18.9-18.9-.5-1.7 0-3.5 1.2-4.7Z" fill="currentColor"/>
+            </svg>
+            <span>WhatsApp</span>
+          </a>
+          <a href="https://www.instagram.com/" target="_blank" rel="noopener">
+            <svg class="social-icon instagram-icon" viewBox="0 0 48 48" aria-hidden="true">
+              <rect x="7" y="7" width="34" height="34" rx="10" fill="none" stroke="currentColor" stroke-width="4"/>
+              <circle cx="24" cy="24" r="8" fill="none" stroke="currentColor" stroke-width="4"/>
+              <circle cx="35" cy="13" r="2.5" fill="currentColor"/>
+            </svg>
+            <span>Instagram</span>
+          </a>
+          <a href="https://www.facebook.com/" target="_blank" rel="noopener">
+            <svg class="social-icon facebook-icon" viewBox="0 0 48 48" aria-hidden="true">
+              <path d="M27 42V26h6l1-7h-7v-4c0-2 1-3 3-3h4V6c-1-.2-3-.5-5-.5-6 0-10 3.6-10 10v3.5h-6v7h6v16Z" fill="currentColor"/>
+            </svg>
+            <span>Facebook</span>
+          </a>
+          <a href="mailto:academy@example.com">
+            <svg class="social-icon email-icon" viewBox="0 0 48 48" aria-hidden="true">
+              <rect x="5" y="10" width="38" height="28" rx="5" fill="none" stroke="currentColor" stroke-width="3"/>
+              <path d="m7 14 17 13 17-13" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span>Email</span>
+          </a>
+        </div>
+        <p class="info-note">Replace these sample links with the academy's official links.</p>
+      </section>
+
+      <section id="contactPage" class="page">
+        <h2>Contact Maihar Physical Academy</h2>
+        <p>For academy-related enquiries, contact us.</p>
+        <p>Email: <a href="mailto:academy@example.com">academy@example.com</a></p>
+      </section>
+
+    </div>
+    <footer>© <span id="year"></span> Maihar Physical Academy. All rights reserved.</footer>
+  </main>
+</div>
+
+<!-- ADD STUDENT -->
+<dialog id="studentDialog">
+  <form id="studentForm" class="dialog-form">
+    <h2>Add New Student</h2>
+    <label>Student Name<input name="name" required></label>
+    <label>Username<input name="username" required></label>
+    <label>Password<input name="password" type="password" minlength="4" required></label>
+    <label>Contact Number<input name="phone"></label>
+    <label>Total Fees<input name="totalFees" type="number" min="0" required></label>
+    <label>Paid Fees<input name="paidFees" type="number" min="0" required></label>
+    <div class="dialog-actions">
+      <button type="submit">Save Student</button>
+      <button type="button" data-close="studentDialog">Cancel</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- EDIT TRAINER PROFILE -->
+<dialog id="profileDialog">
+  <form id="profileForm" class="dialog-form">
+    <h2>Edit Trainer Profile</h2>
+    <div class="profile-photo-editor">
+      <div class="profile-avatar profile-avatar-preview" aria-hidden="true">
+        <span id="profilePreviewInitials">T</span>
+        <img id="profilePhotoPreview" alt="" hidden>
+      </div>
+      <label>Profile picture
+        <input id="profilePhotoInput" type="file" accept="image/*">
+      </label>
+      <button id="removeProfilePhoto" type="button" class="secondary-button">Remove photo</button>
+    </div>
+    <label>Trainer name<input id="profileNameInput" name="name" required></label>
+    <label>Username<input id="profileUsernameInput" name="username" required autocomplete="username"></label>
+    <label>New password<input id="profilePasswordInput" name="password" type="password" minlength="4" autocomplete="new-password" placeholder="Leave blank to keep current password"></label>
+    <label>Contact number<input id="profilePhoneInput" name="phone" type="tel"></label>
+    <div class="dialog-actions">
+      <button type="submit">Save Profile</button>
+      <button type="button" data-close="profileDialog">Cancel</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- ADD NOTICE -->
+<dialog id="noticeDialog">
+  <form id="noticeForm" class="dialog-form">
+    <h2>Upload Notice</h2>
+    <label>Notice Title<input name="title" required></label>
+    <label>Notice Details<textarea name="body" rows="4" required></textarea></label>
+    <div class="dialog-actions">
+      <button type="submit">Publish Notice</button>
+      <button type="button" data-close="noticeDialog">Cancel</button>
+    </div>
+  </form>
+</dialog>
+
+<div id="toast"></div>
+<script src="script.js"></script>
+</body>
+</html>
