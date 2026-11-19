@@ -120,40 +120,163 @@ function renderProfile() {
 }
 
 // LOGIN
-$("loginForm").addEventListener("submit", function(event) {
+
+// BACKEND CONNECTION
+const API_URL = "https://maiharphysicalacademy-production.up.railway.app";
+let authToken = localStorage.getItem("maihar_auth_token");
+
+
+async function apiRequest(path, method = "GET", body = null) {
+  const options = {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${authToken}`
+    }
+  };
+
+  if (body !== null) {
+    options.body = JSON.stringify(body);
+  }
+
+  const response = await fetch(`${API_URL}/api${path}`, options);
+  const result = await response.json();
+
+  if (!response.ok || result.success === false) {
+    throw new Error(result.message || "Request failed");
+  }
+
+  return result;
+}
+
+async function loadBackendData() {
+  const profile = await apiRequest("/me");
+  const attendanceResult = await apiRequest("/attendance");
+  const noticesResult = await apiRequest("/notices");
+
+  const studentsResult = isTrainer()
+    ? await apiRequest("/students")
+    : null;
+
+  const users = isTrainer()
+    ? studentsResult.students.map(student => ({
+        id: student.id,
+        name: student.full_name,
+        username: student.username,
+        phone: student.phone || "",
+        course: student.course || "",
+        batch: student.batch || "",
+        totalFees: Number(student.total_fees || 0),
+        paidFees: Number(student.paid_fees || 0),
+        role: "student"
+      }))
+    : [{
+        id: profile.user.id,
+        name: profile.user.full_name,
+        username: profile.user.username,
+        phone: profile.user.phone || "",
+        totalFees: Number(profile.user.total_fees || 0),
+        paidFees: Number(profile.user.paid_fees || 0),
+        role: "student"
+      }];
+
+  data.users = isTrainer()
+    ? users
+    : users;
+
+  data.users.unshift(
+    isTrainer() ? currentUser : null
+  );
+  data.users = data.users.filter(Boolean);
+
+  data.attendance = {};
+
+  attendanceResult.attendance.forEach(record => {
+    const date = String(record.attendance_date).slice(0, 10);
+
+    if (!data.attendance[date]) {
+      data.attendance[date] = {};
+    }
+
+    data.attendance[date][record.student_id] =
+      record.status.charAt(0).toUpperCase() +
+      record.status.slice(1).toLowerCase();
+  });
+
+  data.notices = noticesResult.notices.map(notice => ({
+    id: notice.id,
+    title: notice.title,
+    body: notice.body,
+    date: new Date(notice.created_at).toLocaleDateString("en-IN"),
+    by: notice.trainer_name || "Academy Trainer"
+  }));
+}
+
+
+// LOGIN
+$("loginForm").addEventListener("submit", async function(event) {
   event.preventDefault();
 
   const username = $("username").value.trim().toLowerCase();
   const password = $("password").value;
 
-  const user = data.users.find(item =>
-    item.username.toLowerCase() === username &&
-    item.password === password
-  );
+  $("loginError").textContent = "Please wait...";
 
-  if (!user) {
+  try {
+    const response = await fetch(`${API_URL}/api/auth/login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        username,
+        password
+      })
+    });
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      $("loginError").textContent =
+        result.message || "Incorrect username or password.";
+      return;
+    }
+
+    authToken = result.token;
+    localStorage.setItem("maihar_auth_token", authToken);
+
+    currentUser = {
+      id: result.user.id,
+      name: result.user.full_name,
+      username: result.user.username,
+      role: result.user.role,
+      profilePicture: result.user.profile_picture || ""
+    };
+
+    await loadBackendData();
+
+    $("loginError").textContent = "";
+    $("loginPage").classList.add("hidden");
+    $("app").classList.remove("hidden");
+
+    renderProfile();
+
+    document.querySelectorAll(".trainer-only").forEach(element => {
+      element.classList.toggle("hidden", !isTrainer());
+    });
+
+    $("attendanceDate").value = today();
+
+    showPage("dashboard");
+    renderAll();
+
+  } catch (error) {
+    console.error("Login Error:", error);
     $("loginError").textContent =
-      "Incorrect username or password.";
-    return;
+      "Backend connection failed. Please start the server.";
   }
-
-  currentUser = user;
-
-  $("loginError").textContent = "";
-  $("loginPage").classList.add("hidden");
-  $("app").classList.remove("hidden");
-
-  renderProfile();
-
-  document.querySelectorAll(".trainer-only").forEach(element => {
-    element.classList.toggle("hidden", !isTrainer());
-  });
-
-  $("attendanceDate").value = today();
-
-  showPage("dashboard");
-  renderAll();
 });
+
 
 function today() {
   const date = new Date();
@@ -164,15 +287,33 @@ function today() {
 }
 
 // LOGOUT
-$("logoutBtn").addEventListener("click", function() {
-  currentUser = null;
 
+// LOGOUT
+$("logoutBtn").addEventListener("click", function() {
+
+  // Clear login session
+  authToken = null;
+localStorage.removeItem("maihar_auth_token");
+currentUser = null;
+
+  // Reset user data from memory
+  data = JSON.parse(JSON.stringify(defaultData));
+
+  // Hide dashboard and show login
   $("app").classList.add("hidden");
   $("loginPage").classList.remove("hidden");
 
+  // Clear login form
   $("loginForm").reset();
   $("loginError").textContent = "";
+
+  // Reset profile image variables
+  pendingProfilePicture = null;
+  removeProfilePicture = false;
+
+  showToast("Logged out successfully.");
 });
+
 
 // TRAINER PROFILE
 let pendingProfilePicture = null;
@@ -450,6 +591,8 @@ function renderDashboard() {
 }
 
 // STUDENT MANAGEMENT
+
+ // STUDENT MANAGEMENT
 function renderStudents() {
   if (!isTrainer()) return;
 
@@ -474,36 +617,43 @@ function renderStudents() {
   `).join("");
 
   document.querySelectorAll("[data-delete]").forEach(button => {
-    button.addEventListener("click", function() {
+    button.addEventListener("click", async function() {
       const id = this.dataset.delete;
 
       const student = data.users.find(
-        user => user.id === id && user.role === "student"
+        user => String(user.id) === String(id) &&
+                user.role === "student"
       );
 
       if (!student) return;
 
       if (!confirm(`Delete ${student.name}?`)) return;
 
-      data.users = data.users.filter(user => user.id !== id);
+      try {
+        await apiRequest(`/students/${id}`, "DELETE");
 
-      Object.values(data.attendance).forEach(day => {
-        delete day[id];
-      });
+        await loadBackendData();
+        renderAll();
 
-      saveData();
-      renderAll();
-      showToast("Student deleted successfully.");
+        showToast("Student deleted successfully.");
+
+      } catch (error) {
+        alert(error.message || "Unable to delete student.");
+        console.error("Delete Student Error:", error);
+      }
     });
   });
 }
 
+
 // ADD STUDENT
 $("addStudentBtn").addEventListener("click", function() {
-  if (isTrainer()) $("studentDialog").showModal();
+  if (isTrainer()) {
+    $("studentDialog").showModal();
+  }
 });
 
-$("studentForm").addEventListener("submit", function(event) {
+$("studentForm").addEventListener("submit", async function(event) {
   event.preventDefault();
 
   if (!isTrainer()) return;
@@ -511,53 +661,51 @@ $("studentForm").addEventListener("submit", function(event) {
   const form = new FormData(this);
 
   const name = String(form.get("name")).trim();
-  const username = String(form.get("username")).trim();
+  const username = String(form.get("username")).trim().toLowerCase();
   const password = String(form.get("password"));
   const phone = String(form.get("phone")).trim();
 
   const totalFees = Number(form.get("totalFees"));
   const paidFees = Number(form.get("paidFees"));
 
-  if (data.users.some(user =>
-    user.username.toLowerCase() === username.toLowerCase()
-  )) {
-    alert("This username already exists.");
-    return;
-  }
-
   if (
     !name ||
     !username ||
-    password.length < 4 ||
+    password.length < 8 ||
     !Number.isFinite(totalFees) ||
     !Number.isFinite(paidFees) ||
     totalFees < 0 ||
     paidFees < 0 ||
     paidFees > totalFees
   ) {
-    alert("Please enter valid student details and fees.");
+    alert("Please enter valid details. Password must be at least 8 characters.");
     return;
   }
 
-  data.users.push({
-    id: "student_" + Date.now(),
-    name,
-    username,
-    password,
-    phone,
-    role: "student",
-    totalFees,
-    paidFees
-  });
+  try {
+    const result = await apiRequest("/students", "POST", {
+      name,
+      username,
+      password,
+      phone,
+      totalFees,
+      paidFees
+    });
 
-  saveData();
+    this.reset();
+    $("studentDialog").close();
 
-  this.reset();
-  $("studentDialog").close();
+    await loadBackendData();
+    renderAll();
 
-  renderAll();
-  showToast("Student added successfully.");
+    showToast("Student added successfully.");
+
+  } catch (error) {
+    alert(error.message || "Unable to add student.");
+    console.error("Add Student Error:", error);
+  }
 });
+
 
 // ATTENDANCE
 $("attendanceDate").addEventListener("change", function() {
@@ -691,26 +839,38 @@ function renderAttendance() {
     `;
   }).join("");
 
-  document.querySelectorAll("[data-att]").forEach(button => {
-    button.addEventListener("click", function() {
-      if (!isTrainer()) return;
+  
+document.querySelectorAll("[data-att]").forEach(button => {
+  button.addEventListener("click", async function() {
+    if (!isTrainer()) return;
 
-      const studentId = this.dataset.att;
-      const status = this.dataset.status;
+    const studentId = this.dataset.att;
+    const status = this.dataset.status;
 
-      data.attendance[date] = data.attendance[date] || {};
+    try {
+      await apiRequest("/attendance", "POST", {
+        student_id: Number(studentId),
+        attendance_date: date,
+        status: status.toLowerCase()
+      });
 
-      data.attendance[date][studentId] = status;
-
-      saveData();
+      await loadBackendData();
       renderAll();
 
-      showToast("Attendance updated.");
-    });
+      showToast("Attendance updated successfully.");
+
+    } catch (error) {
+      alert(error.message || "Attendance update failed.");
+      console.error("Attendance Error:", error);
+    }
   });
+});
+
 }
 
 // FEES
+
+ // FEES
 function renderFees() {
   const students = studentsList();
 
@@ -739,11 +899,11 @@ function renderFees() {
   }).join("");
 
   document.querySelectorAll("[data-fee]").forEach(button => {
-    button.addEventListener("click", function() {
+    button.addEventListener("click", async function() {
       if (!isTrainer()) return;
 
       const student = data.users.find(
-        user => user.id === this.dataset.fee &&
+        user => String(user.id) === this.dataset.fee &&
                 user.role === "student"
       );
 
@@ -777,16 +937,25 @@ function renderFees() {
         return;
       }
 
-      student.totalFees = totalNumber;
-      student.paidFees = paidNumber;
+      try {
+        await apiRequest(`/fees/${student.id}`, "PUT", {
+          totalFees: totalNumber,
+          paidFees: paidNumber
+        });
 
-      saveData();
-      renderAll();
+        await loadBackendData();
+        renderAll();
 
-      showToast("Fees updated successfully.");
+        showToast("Fees updated successfully.");
+
+      } catch (error) {
+        alert(error.message || "Fees update failed.");
+        console.error("Fees Error:", error);
+      }
     });
   });
 }
+
 
 // NOTIFICATIONS
 function noticeHTML(notice) {
@@ -811,11 +980,14 @@ function renderNotices() {
 }
 
 // ADD NOTICE
+
 $("addNoticeBtn").addEventListener("click", function() {
-  if (isTrainer()) $("noticeDialog").showModal();
+  if (isTrainer()) {
+    $("noticeDialog").showModal();
+  }
 });
 
-$("noticeForm").addEventListener("submit", function(event) {
+$("noticeForm").addEventListener("submit", async function(event) {
   event.preventDefault();
 
   if (!isTrainer()) return;
@@ -825,24 +997,31 @@ $("noticeForm").addEventListener("submit", function(event) {
   const title = String(form.get("title")).trim();
   const body = String(form.get("body")).trim();
 
-  if (!title || !body) return;
+  if (!title || !body) {
+    alert("Please enter notice title and message.");
+    return;
+  }
 
-  data.notices.push({
-    id: "notice_" + Date.now(),
-    title,
-    body,
-    date: new Date().toLocaleDateString("en-IN"),
-    by: currentUser.name
-  });
+  try {
+    await apiRequest("/notices", "POST", {
+      title: title,
+      body: body
+    });
 
-  saveData();
+    this.reset();
+    $("noticeDialog").close();
 
-  this.reset();
-  $("noticeDialog").close();
+    await loadBackendData();
+    renderAll();
 
-  renderAll();
-  showToast("Notice published successfully.");
+    showToast("Notice published successfully.");
+
+  } catch (error) {
+    alert(error.message || "Unable to publish notice.");
+    console.error("Notice Error:", error);
+  }
 });
+
 
 // CLOSE DIALOGS
 document.querySelectorAll("[data-close]").forEach(button => {
@@ -863,3 +1042,52 @@ function renderAll() {
 
   $("year").textContent = new Date().getFullYear();
 }
+
+
+// RESTORE LOGIN SESSION AFTER PAGE REFRESH
+async function restoreSession() {
+
+  if (!authToken) return;
+
+  try {
+    const profile = await apiRequest("/me");
+
+    currentUser = {
+      id: profile.user.id,
+      name: profile.user.full_name,
+      username: profile.user.username,
+      role: profile.user.role,
+      profilePicture: profile.user.profile_picture || "",
+      totalFees: Number(profile.user.total_fees || 0),
+      paidFees: Number(profile.user.paid_fees || 0)
+    };
+
+    await loadBackendData();
+
+    $("loginPage").classList.add("hidden");
+    $("app").classList.remove("hidden");
+
+    renderProfile();
+
+    document.querySelectorAll(".trainer-only").forEach(element => {
+      element.classList.toggle("hidden", !isTrainer());
+    });
+
+    $("attendanceDate").value = today();
+
+    showPage("dashboard");
+    renderAll();
+
+  } catch (error) {
+    console.error("Session Restore Error:", error);
+
+    authToken = null;
+    currentUser = null;
+    localStorage.removeItem("maihar_auth_token");
+
+    $("app").classList.add("hidden");
+    $("loginPage").classList.remove("hidden");
+  }
+}
+
+restoreSession();
