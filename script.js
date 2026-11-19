@@ -122,7 +122,7 @@ function renderProfile() {
 // LOGIN
 
 // BACKEND CONNECTION
-const API_URL = "http://localhost:3000";
+const API_URL = "https://maiharphysicalacademy-production.up.railway.app";
 let authToken = localStorage.getItem("maihar_auth_token");
 
 
