@@ -6,13 +6,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Maihar Physical Academy</title>
 <link rel="stylesheet" href="style.css">
+<link rel="icon" type="image/png" href="favicon.png">
 </head>
 <body>
 
 <!-- LOGIN -->
 <section id="loginPage" class="login-page">
   <div class="login-card">
-    <div class="logo">MPA</div>
+    <img src="academy-logo.png" alt="Maihar Physical Academy" class="logo">
     <h2>Maihar Physical Academy</h2>
     <p>Student Management Portal</p>
 
@@ -23,8 +24,8 @@
       <label>Password</label>
       <input id="password" type="password" placeholder="Enter password" required>
 
-      <button type="submit">Login</button>
-      <p id="loginError"></p>
+      <button id="loginButton" type="submit">Login</button>
+      <p id="loginError" role="status" aria-live="polite"></p>
     </form>
   </div>
 </section>
@@ -34,7 +35,7 @@
 
   <aside class="sidebar">
     <div class="academy-logo">
-      <div class="logo">MPA</div>
+      <img src="academy-logo.png" alt="Maihar Physical Academy" class="logo">
       <h3>Maihar Physical Academy</h3>
     </div>
 

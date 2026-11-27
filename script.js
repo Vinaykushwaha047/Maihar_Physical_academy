@@ -217,10 +217,18 @@ async function loadBackendData() {
 $("loginForm").addEventListener("submit", async function(event) {
   event.preventDefault();
 
+  const loginButton = $("loginButton");
+  if (loginButton.disabled) return;
+
   const username = $("username").value.trim().toLowerCase();
   const password = $("password").value;
 
   $("loginError").textContent = "Please wait...";
+  $("loginError").classList.add("loading-status");
+  loginButton.disabled = true;
+  loginButton.classList.add("loading");
+  loginButton.setAttribute("aria-busy", "true");
+  loginButton.textContent = "Please wait...";
 
   try {
     const response = await fetch(`${API_URL}/api/auth/login`, {
@@ -274,6 +282,12 @@ $("loginForm").addEventListener("submit", async function(event) {
     console.error("Login Error:", error);
     $("loginError").textContent =
       "Backend connection failed. Please start the server.";
+  } finally {
+    loginButton.disabled = false;
+    loginButton.classList.remove("loading");
+    loginButton.removeAttribute("aria-busy");
+    loginButton.textContent = "Login";
+    $("loginError").classList.remove("loading-status");
   }
 });
 

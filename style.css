@@ -42,19 +42,23 @@ button { cursor: pointer; }
   border: 1px solid var(--border);
   border-radius: 12px;
   box-shadow: 0 8px 28px #19304c12;
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.login-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 14px 36px #19304c20;
 }
 
 .logo {
-  width: 60px;
-  height: 60px;
-  display: grid;
-  place-items: center;
-  background: var(--navy);
-  color: white;
-  font-size: 20px;
-  font-weight: 800;
-  border-radius: 9px;
-  margin-bottom: 20px;
+    width: 60px;
+    height: 60px;
+    object-fit: contain;
+    display: block;
+    border-radius: 50%;
+    overflow: hidden;
+    background: white;
+    margin-bottom: 20px;
 }
 
 .login-card h2 { font-size: 22px; margin: 0 0 8px; }
@@ -93,7 +97,73 @@ input:focus, textarea:focus {
 
 .login-card form button { width: 100%; margin-top: 20px; }
 
+.login-card input {
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.login-card input:hover {
+  border-color: #9aabc0;
+}
+
+.login-card form button {
+  transition: background-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+}
+
+.login-card form button:hover:not(:disabled) {
+  background: var(--blue);
+  transform: translateY(-2px);
+  box-shadow: 0 5px 12px #17365d2e;
+}
+
+.login-card form button:disabled {
+  cursor: wait;
+  opacity: 0.85;
+}
+
+.login-card form button.loading::before {
+  content: "";
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  margin-right: 8px;
+  vertical-align: -2px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: login-spinner 700ms linear infinite;
+}
+
+#loginError.loading-status {
+  color: var(--blue);
+}
+
+.login-card form button:focus-visible {
+  outline: 3px solid #245a964d;
+  outline-offset: 3px;
+}
+
+@keyframes login-spinner {
+  to { transform: rotate(360deg); }
+}
+
 #loginError { color: var(--red); }
+
+@media (prefers-reduced-motion: reduce) {
+  .login-card,
+  .login-card input,
+  .login-card form button {
+    transition: none;
+  }
+
+  .login-card:hover,
+  .login-card form button:hover {
+    transform: none;
+  }
+
+  .login-card form button.loading::before {
+    animation: none;
+  }
+}
 
 /* LAYOUT */
 .app { min-height: 100vh; display: flex; }
@@ -523,16 +593,51 @@ dialog::backdrop { background: #17283d80; }
 }
 
 @media(max-width: 650px) {
-  .sidebar { width: 65px; padding: 12px 6px; }
-  .academy-logo h3 { display: none; }
-  .academy-logo { padding: 0 4px 15px; }
-  .nav-link { font-size: 10px; text-align: center; padding: 12px 3px; }
-  .main-content { margin-left: 65px; width: calc(100% - 65px); }
-  .topbar { padding: 0 13px; height: 70px; }
+  .app { flex-direction: column; }
+  .sidebar {
+    position: sticky;
+    inset: auto;
+    top: 0;
+    width: 100%;
+    height: auto;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .academy-logo { display: none; }
+  .sidebar nav {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    gap: 4px;
+    padding-top: 0;
+    overflow-x: auto;
+  }
+  .nav-link {
+    flex: 0 0 auto;
+    padding: 10px 8px;
+    white-space: nowrap;
+  }
+  .logout-btn {
+    flex: 0 0 auto;
+    margin-top: 0;
+    padding: 9px;
+  }
+  .main-content { margin-left: 0; width: 100%; }
+  .topbar {
+    height: auto;
+    min-height: 70px;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px;
+  }
   .topbar h2 { font-size: 16px; }
   .user-profile { gap: 6px; }
   .profile-avatar { width: 32px; height: 32px; flex-basis: 32px; }
-  .profile-edit-btn { padding: 7px; }
+  .profile-edit-btn { padding: 7px; font-size: 9px; }
   .profile-photo-editor { grid-template-columns: 48px 1fr; }
   .profile-photo-editor .secondary-button { grid-column: 2; justify-self: start; }
   .content { padding: 17px 12px; }
@@ -549,4 +654,17 @@ dialog::backdrop { background: #17283d80; }
   .social-links a { padding: 18px 5px; font-size: 11px; }
   .social-icon { width: 36px; height: 36px; }
   .login-card { padding: 27px 22px; }
+}
+
+@media(max-width: 400px) {
+  .sidebar { gap: 4px; padding: 6px; }
+  .nav-link { padding: 9px 6px; font-size: 10px; }
+  .logout-btn { padding: 8px 6px; font-size: 10px; }
+  .topbar { align-items: flex-start; }
+  .user-profile { flex-wrap: wrap; justify-content: flex-end; }
+  .profile-edit-btn { font-size: 9px; }
+  .section-title { gap: 8px; }
+  .attendance-date-label { width: 100%; }
+  .dialog-actions { flex-wrap: wrap; }
+  .dialog-actions button { flex: 1 1 120px; }
 }
