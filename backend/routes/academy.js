@@ -27,34 +27,159 @@ router.get("/me", async (req, res) => {
         }
 
         res.json({ success: true, user: rows[0] });
+
     } catch (error) {
         console.error(error);
-        res.status(500).json({ success: false, message: "Could not load profile" });
+        res.status(500).json({
+            success: false,
+            message: "Could not load profile"
+        });
     }
 });
 
-// GET ALL STUDENTS (TRAINER ONLY)
+// UPDATE TRAINER PROFILE
+router.put("/profile", trainerOnly, async (req, res) => {
+    try {
+        const { name, username, phone, password, profilePicture } = req.body;
+
+        const fullName = String(name || "").trim();
+        const trainerUsername = String(username || "").trim();
+        const trainerPhone = String(phone || "").trim();
+
+        if (!fullName || !trainerUsername) {
+            return res.status(400).json({
+                success: false,
+                message: "Name and username are required"
+            });
+        }
+
+        if (
+            password !== undefined &&
+            password !== "" &&
+            (typeof password !== "string" || password.length < 4)
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: "Password must be at least 4 characters"
+            });
+        }
+
+        const [existing] = await db.query(
+            "SELECT id FROM users WHERE username = ? AND id <> ?",
+            [trainerUsername, req.user.id]
+        );
+
+        if (existing.length) {
+            return res.status(409).json({
+                success: false,
+                message: "That username is already in use"
+            });
+        }
+
+        let sql = `
+            UPDATE users SET
+            full_name = ?,
+            username = ?,
+            phone = ?
+        `;
+
+        const params = [
+            fullName,
+            trainerUsername,
+            trainerPhone || null
+        ];
+
+        // Only update photo when a new photo or removal is submitted.
+        // If profilePicture is omitted, old photo remains unchanged.
+        if (
+            Object.prototype.hasOwnProperty.call(req.body, "profilePicture")
+        ) {
+            sql += ", profile_picture = ?";
+            params.push(profilePicture || null);
+        }
+
+        if (password) {
+            const passwordHash = await bcrypt.hash(password, 12);
+            sql += ", password_hash = ?";
+            params.push(passwordHash);
+        }
+
+        sql += " WHERE id = ? AND role = 'trainer'";
+        params.push(req.user.id);
+
+        await db.query(sql, params);
+
+        // Check trainer account and get updated details
+        const [rows] = await db.query(
+            `SELECT id, full_name, username, email, phone, role,
+                    course, batch, total_fees, paid_fees, profile_picture
+             FROM users
+             WHERE id = ? AND role = 'trainer'`,
+            [req.user.id]
+        );
+
+        if (!rows.length) {
+            return res.status(404).json({
+                success: false,
+                message: "Trainer account not found"
+            });
+        }
+
+        res.json({
+            success: true,
+            message: "Trainer profile updated successfully",
+            user: rows[0]
+        });
+
+    } catch (error) {
+        console.error("Trainer Profile Update Error:", error);
+
+        res.status(500).json({
+            success: false,
+            message: "Could not update trainer profile"
+        });
+    }
+});
+
+// GET ALL STUDENTS
 router.get("/students", trainerOnly, async (req, res) => {
     try {
         const [students] = await db.query(
             `SELECT id, full_name, username, phone, course, batch,
                     total_fees, paid_fees
-             FROM users WHERE role = 'student' ORDER BY id DESC`
+             FROM users
+             WHERE role = 'student'
+             ORDER BY id DESC`
         );
 
-        res.json({ success: true, students });
+        res.json({
+            success: true,
+            students
+        });
+
     } catch (error) {
         console.error(error);
-        res.status(500).json({ success: false, message: "Could not load students" });
+
+        res.status(500).json({
+            success: false,
+            message: "Could not load students"
+        });
     }
 });
 
-// ADD STUDENT (TRAINER ONLY)
+// ADD STUDENT
 router.post("/students", trainerOnly, async (req, res) => {
     try {
         const {
-            name, full_name, username, password, phone,
-            totalFees, paidFees, course, batch
+            name,
+            full_name,
+            username,
+            password,
+            phone,
+            totalFees,
+            paidFees,
+            course,
+            batch
         } = req.body;
 
         const studentName = (full_name || name || "").trim();
@@ -77,8 +202,13 @@ router.post("/students", trainerOnly, async (req, res) => {
         const total = Number(totalFees || 0);
         const paid = Number(paidFees || 0);
 
-        if (!Number.isFinite(total) || !Number.isFinite(paid) ||
-            total < 0 || paid < 0 || paid > total) {
+        if (
+            !Number.isFinite(total) ||
+            !Number.isFinite(paid) ||
+            total < 0 ||
+            paid < 0 ||
+            paid > total
+        ) {
             return res.status(400).json({
                 success: false,
                 message: "Please enter valid fee amounts"
@@ -105,8 +235,14 @@ router.post("/students", trainerOnly, async (req, res) => {
               course, batch, total_fees, paid_fees)
              VALUES (?, ?, ?, ?, 'student', ?, ?, ?, ?)`,
             [
-                studentName, studentUsername, phone || null,
-                passwordHash, course || null, batch || null, total, paid
+                studentName,
+                studentUsername,
+                phone || null,
+                passwordHash,
+                course || null,
+                batch || null,
+                total,
+                paid
             ]
         );
 
@@ -115,32 +251,61 @@ router.post("/students", trainerOnly, async (req, res) => {
             message: "Student added successfully",
             studentId: result.insertId
         });
+
     } catch (error) {
         console.error(error);
-        res.status(500).json({ success: false, message: "Could not add student" });
+
+        res.status(500).json({
+            success: false,
+            message: "Could not add student"
+        });
     }
 });
 
-// UPDATE STUDENT DETAILS (TRAINER ONLY)
+// UPDATE STUDENT DETAILS
 router.put("/students/:id", trainerOnly, async (req, res) => {
     try {
-        const { name, full_name, phone, totalFees, paidFees, course, batch } = req.body;
+        const {
+            name,
+            full_name,
+            phone,
+            totalFees,
+            paidFees,
+            course,
+            batch
+        } = req.body;
+
         const studentId = Number(req.params.id);
 
         const [students] = await db.query(
-            "SELECT id, total_fees, paid_fees FROM users WHERE id = ? AND role = 'student'",
+            `SELECT id, total_fees, paid_fees
+             FROM users
+             WHERE id = ? AND role = 'student'`,
             [studentId]
         );
 
         if (!students.length) {
-            return res.status(404).json({ success: false, message: "Student not found" });
+            return res.status(404).json({
+                success: false,
+                message: "Student not found"
+            });
         }
 
-        const total = totalFees === undefined ? Number(students[0].total_fees) : Number(totalFees);
-        const paid = paidFees === undefined ? Number(students[0].paid_fees) : Number(paidFees);
+        const total = totalFees === undefined
+            ? Number(students[0].total_fees)
+            : Number(totalFees);
 
-        if (!Number.isFinite(total) || !Number.isFinite(paid) ||
-            total < 0 || paid < 0 || paid > total) {
+        const paid = paidFees === undefined
+            ? Number(students[0].paid_fees)
+            : Number(paidFees);
+
+        if (
+            !Number.isFinite(total) ||
+            !Number.isFinite(paid) ||
+            total < 0 ||
+            paid < 0 ||
+            paid > total
+        ) {
             return res.status(400).json({
                 success: false,
                 message: "Please enter valid fee amounts"
@@ -159,23 +324,36 @@ router.put("/students/:id", trainerOnly, async (req, res) => {
             [
                 (full_name || name || "").trim() || null,
                 phone === undefined ? null : phone,
-                total, paid, course || null, batch || null, studentId
+                total,
+                paid,
+                course || null,
+                batch || null,
+                studentId
             ]
         );
 
-        res.json({ success: true, message: "Student updated successfully" });
+        res.json({
+            success: true,
+            message: "Student updated successfully"
+        });
+
     } catch (error) {
         console.error(error);
-        res.status(500).json({ success: false, message: "Could not update student" });
+
+        res.status(500).json({
+            success: false,
+            message: "Could not update student"
+        });
     }
 });
 
-// DELETE STUDENT (TRAINER ONLY)
+// DELETE STUDENT
 router.delete("/students/:id", trainerOnly, async (req, res) => {
     const connection = await db.getConnection();
 
     try {
         const studentId = Number(req.params.id);
+
         await connection.beginTransaction();
 
         const [students] = await connection.query(
@@ -185,7 +363,11 @@ router.delete("/students/:id", trainerOnly, async (req, res) => {
 
         if (!students.length) {
             await connection.rollback();
-            return res.status(404).json({ success: false, message: "Student not found" });
+
+            return res.status(404).json({
+                success: false,
+                message: "Student not found"
+            });
         }
 
         await connection.query(
@@ -199,11 +381,21 @@ router.delete("/students/:id", trainerOnly, async (req, res) => {
         );
 
         await connection.commit();
-        res.json({ success: true, message: "Student deleted successfully" });
+
+        res.json({
+            success: true,
+            message: "Student deleted successfully"
+        });
+
     } catch (error) {
         await connection.rollback();
         console.error(error);
-        res.status(500).json({ success: false, message: "Could not delete student" });
+
+        res.status(500).json({
+            success: false,
+            message: "Could not delete student"
+        });
+
     } finally {
         connection.release();
     }
@@ -222,6 +414,7 @@ router.get("/attendance", async (req, res) => {
                 JOIN users u ON u.id = a.student_id
                 WHERE u.role = 'student'
             `;
+
             const params = [];
 
             if (date) {
@@ -232,13 +425,19 @@ router.get("/attendance", async (req, res) => {
             sql += " ORDER BY a.attendance_date DESC, u.full_name ASC";
 
             const [rows] = await db.query(sql, params);
-            return res.json({ success: true, attendance: rows });
+
+            return res.json({
+                success: true,
+                attendance: rows
+            });
         }
 
         let sql = `
             SELECT id, student_id, attendance_date, status, remarks
-            FROM attendance WHERE student_id = ?
+            FROM attendance
+            WHERE student_id = ?
         `;
+
         const params = [req.user.id];
 
         if (date) {
@@ -249,21 +448,39 @@ router.get("/attendance", async (req, res) => {
         sql += " ORDER BY attendance_date DESC";
 
         const [rows] = await db.query(sql, params);
-        res.json({ success: true, attendance: rows });
+
+        res.json({
+            success: true,
+            attendance: rows
+        });
+
     } catch (error) {
         console.error(error);
-        res.status(500).json({ success: false, message: "Could not load attendance" });
+
+        res.status(500).json({
+            success: false,
+            message: "Could not load attendance"
+        });
     }
 });
 
-// MARK / UPDATE ATTENDANCE (TRAINER ONLY)
+// MARK / UPDATE ATTENDANCE
 router.post("/attendance", trainerOnly, async (req, res) => {
     try {
-        const { student_id, attendance_date, status, remarks } = req.body;
+        const {
+            student_id,
+            attendance_date,
+            status,
+            remarks
+        } = req.body;
+
         const normalizedStatus = String(status || "").toLowerCase();
 
-        if (!student_id || !attendance_date ||
-            !["present", "absent"].includes(normalizedStatus)) {
+        if (
+            !student_id ||
+            !attendance_date ||
+            !["present", "absent"].includes(normalizedStatus)
+        ) {
             return res.status(400).json({
                 success: false,
                 message: "Student, date and valid attendance status are required"
@@ -276,7 +493,10 @@ router.post("/attendance", trainerOnly, async (req, res) => {
         );
 
         if (!students.length) {
-            return res.status(404).json({ success: false, message: "Student not found" });
+            return res.status(404).json({
+                success: false,
+                message: "Student not found"
+            });
         }
 
         await db.query(
@@ -287,25 +507,44 @@ router.post("/attendance", trainerOnly, async (req, res) => {
              trainer_id = VALUES(trainer_id),
              status = VALUES(status),
              remarks = VALUES(remarks)`,
-            [student_id, req.user.id, attendance_date, normalizedStatus, remarks || null]
+            [
+                student_id,
+                req.user.id,
+                attendance_date,
+                normalizedStatus,
+                remarks || null
+            ]
         );
 
-        res.json({ success: true, message: "Attendance saved successfully" });
+        res.json({
+            success: true,
+            message: "Attendance saved successfully"
+        });
+
     } catch (error) {
         console.error(error);
-        res.status(500).json({ success: false, message: "Could not save attendance" });
+
+        res.status(500).json({
+            success: false,
+            message: "Could not save attendance"
+        });
     }
 });
 
-// UPDATE FEES (TRAINER ONLY)
+// UPDATE FEES
 router.put("/fees/:id", trainerOnly, async (req, res) => {
     try {
         const studentId = Number(req.params.id);
         const total = Number(req.body.totalFees);
         const paid = Number(req.body.paidFees);
 
-        if (!Number.isFinite(total) || !Number.isFinite(paid) ||
-            total < 0 || paid < 0 || paid > total) {
+        if (
+            !Number.isFinite(total) ||
+            !Number.isFinite(paid) ||
+            total < 0 ||
+            paid < 0 ||
+            paid > total
+        ) {
             return res.status(400).json({
                 success: false,
                 message: "Please enter valid fee amounts"
@@ -313,23 +552,35 @@ router.put("/fees/:id", trainerOnly, async (req, res) => {
         }
 
         const [result] = await db.query(
-            `UPDATE users SET total_fees = ?, paid_fees = ?
+            `UPDATE users
+             SET total_fees = ?, paid_fees = ?
              WHERE id = ? AND role = 'student'`,
             [total, paid, studentId]
         );
 
         if (!result.affectedRows) {
-            return res.status(404).json({ success: false, message: "Student not found" });
+            return res.status(404).json({
+                success: false,
+                message: "Student not found"
+            });
         }
 
-        res.json({ success: true, message: "Fees updated successfully" });
+        res.json({
+            success: true,
+            message: "Fees updated successfully"
+        });
+
     } catch (error) {
         console.error(error);
-        res.status(500).json({ success: false, message: "Could not update fees" });
+
+        res.status(500).json({
+            success: false,
+            message: "Could not update fees"
+        });
     }
 });
 
-// GET NOTICES (TRAINER AND STUDENT)
+// GET NOTICES
 router.get("/notices", async (req, res) => {
     try {
         const [notices] = await db.query(
@@ -340,14 +591,22 @@ router.get("/notices", async (req, res) => {
              ORDER BY n.created_at DESC`
         );
 
-        res.json({ success: true, notices });
+        res.json({
+            success: true,
+            notices
+        });
+
     } catch (error) {
         console.error(error);
-        res.status(500).json({ success: false, message: "Could not load notices" });
+
+        res.status(500).json({
+            success: false,
+            message: "Could not load notices"
+        });
     }
 });
 
-// ADD NOTICE (TRAINER ONLY)
+// ADD NOTICE
 router.post("/notices", trainerOnly, async (req, res) => {
     try {
         const { title, body } = req.body;
@@ -369,13 +628,18 @@ router.post("/notices", trainerOnly, async (req, res) => {
             message: "Notice published successfully",
             noticeId: result.insertId
         });
+
     } catch (error) {
         console.error(error);
-        res.status(500).json({ success: false, message: "Could not publish notice" });
+
+        res.status(500).json({
+            success: false,
+            message: "Could not publish notice"
+        });
     }
 });
 
-// DELETE NOTICE (TRAINER ONLY)
+// DELETE NOTICE
 router.delete("/notices/:id", trainerOnly, async (req, res) => {
     try {
         const [result] = await db.query(
@@ -384,13 +648,24 @@ router.delete("/notices/:id", trainerOnly, async (req, res) => {
         );
 
         if (!result.affectedRows) {
-            return res.status(404).json({ success: false, message: "Notice not found" });
+            return res.status(404).json({
+                success: false,
+                message: "Notice not found"
+            });
         }
 
-        res.json({ success: true, message: "Notice deleted successfully" });
+        res.json({
+            success: true,
+            message: "Notice deleted successfully"
+        });
+
     } catch (error) {
         console.error(error);
-        res.status(500).json({ success: false, message: "Could not delete notice" });
+
+        res.status(500).json({
+            success: false,
+            message: "Could not delete notice"
+        });
     }
 });
 
