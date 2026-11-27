@@ -593,51 +593,16 @@ dialog::backdrop { background: #17283d80; }
 }
 
 @media(max-width: 650px) {
-  .app { flex-direction: column; }
-  .sidebar {
-    position: sticky;
-    inset: auto;
-    top: 0;
-    width: 100%;
-    height: auto;
-    flex-direction: row;
-    align-items: center;
-    gap: 8px;
-    padding: 8px;
-    border-right: 0;
-    border-bottom: 1px solid var(--border);
-  }
-  .academy-logo { display: none; }
-  .sidebar nav {
-    display: flex;
-    flex: 1;
-    min-width: 0;
-    gap: 4px;
-    padding-top: 0;
-    overflow-x: auto;
-  }
-  .nav-link {
-    flex: 0 0 auto;
-    padding: 10px 8px;
-    white-space: nowrap;
-  }
-  .logout-btn {
-    flex: 0 0 auto;
-    margin-top: 0;
-    padding: 9px;
-  }
-  .main-content { margin-left: 0; width: 100%; }
-  .topbar {
-    height: auto;
-    min-height: 70px;
-    flex-wrap: wrap;
-    gap: 8px;
-    padding: 12px;
-  }
+  .sidebar { width: 65px; padding: 12px 6px; }
+  .academy-logo h3 { display: none; }
+  .academy-logo { padding: 0 4px 15px; }
+  .nav-link { font-size: 10px; text-align: center; padding: 12px 3px; }
+  .main-content { margin-left: 65px; width: calc(100% - 65px); }
+  .topbar { padding: 0 13px; height: 70px; }
   .topbar h2 { font-size: 16px; }
   .user-profile { gap: 6px; }
   .profile-avatar { width: 32px; height: 32px; flex-basis: 32px; }
-  .profile-edit-btn { padding: 7px; font-size: 9px; }
+  .profile-edit-btn { padding: 7px; }
   .profile-photo-editor { grid-template-columns: 48px 1fr; }
   .profile-photo-editor .secondary-button { grid-column: 2; justify-self: start; }
   .content { padding: 17px 12px; }
@@ -654,17 +619,4 @@ dialog::backdrop { background: #17283d80; }
   .social-links a { padding: 18px 5px; font-size: 11px; }
   .social-icon { width: 36px; height: 36px; }
   .login-card { padding: 27px 22px; }
-}
-
-@media(max-width: 400px) {
-  .sidebar { gap: 4px; padding: 6px; }
-  .nav-link { padding: 9px 6px; font-size: 10px; }
-  .logout-btn { padding: 8px 6px; font-size: 10px; }
-  .topbar { align-items: flex-start; }
-  .user-profile { flex-wrap: wrap; justify-content: flex-end; }
-  .profile-edit-btn { font-size: 9px; }
-  .section-title { gap: 8px; }
-  .attendance-date-label { width: 100%; }
-  .dialog-actions { flex-wrap: wrap; }
-  .dialog-actions button { flex: 1 1 120px; }
 }
